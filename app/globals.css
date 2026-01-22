@@ -24,3 +24,41 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ================== PRINT (PDF EXPORT) ================== */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  aside,
+  nav,
+  header,
+  button,
+  input {
+    display: none !important;
+  }
+
+  table {
+    font-size: 10px !important;
+    border-collapse: collapse !important;
+  }
+
+  th,
+  td {
+    border: 1px solid #000 !important;
+    padding: 4px !important;
+    color: black !important;
+  }
+
+  h1 {
+    color: black !important;
+    margin-bottom: 8px !important;
+  }
+
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+}
