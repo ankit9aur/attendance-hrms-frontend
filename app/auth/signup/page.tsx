@@ -1,37 +1,60 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import api from "@/services/api";
+import { useRouter } from "next/navigation";
 
 export default function SignupPage() {
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const [form, setForm] = useState({ username: "", password: "" });
 
   const submit = async () => {
-    await api.post("/auth/register/", form);
-    router.push("/auth/login");
+    setLoading(true);
+    try {
+      await api.post("/auth/signup/", {
+        username,
+        email,
+        password,
+      });
+      alert("Account created. Please login.");
+      router.push("/auth/login");
+    } catch (err: any) {
+      alert("Signup failed");
+    }
+    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black text-white">
-      <div className="bg-gray-900 p-6 rounded w-80">
-        <h2 className="text-xl mb-4">Sign Up</h2>
+    <div className="min-h-screen flex items-center justify-center bg-black">
+      <div className="bg-gray-900 p-6 rounded w-80 space-y-3">
+        <h1 className="text-xl font-bold text-white">Sign Up</h1>
 
         <input
-          className="w-full p-2 mb-3 bg-gray-800"
           placeholder="Username"
-          onChange={(e) => setForm({ ...form, username: e.target.value })}
+          className="w-full p-2 bg-gray-800"
+          onChange={(e) => setUsername(e.target.value)} 
         />
         <input
-          className="w-full p-2 mb-3 bg-gray-800"
+          placeholder="Email"
+          className="w-full p-2 bg-gray-800"
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
           type="password"
           placeholder="Password"
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
+          className="w-full p-2 bg-gray-800"
+          onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button onClick={submit} className="bg-blue-600 w-full py-2 rounded">
-          Create Account
+        <button
+          onClick={submit}
+          disabled={loading}
+          className="w-full bg-blue-600 p-2 rounded"
+        >
+          {loading ? "Creating..." : "Create Account"}
         </button>
       </div>
     </div>
