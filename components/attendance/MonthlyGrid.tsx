@@ -6,6 +6,11 @@ import {
   deleteAttendance,
 } from "@/services/attendance.service";
 import AttendanceModal from "./AttendanceModal";
+import {
+  calendarDayFromApiDate,
+  effectiveAttendanceStatusFromRecord,
+  resolveWorkedHoursForDisplay,
+} from "@/lib/attendance-status";
 type Employee = {
   id: number;
   name: string;
@@ -29,6 +34,17 @@ type OffDay = {
   name: string;
   is_optional: boolean;
 };
+
+function joiningDayNotReached(
+  monthYyyyMm: string,
+  day: number,
+  joiningDateIso: string
+): boolean {
+  const cell = `${monthYyyyMm}-${String(day).padStart(2, "0")}`;
+  const join = joiningDateIso.split("T")[0];
+  return cell < join;
+}
+
 export default function MonthlyGrid() {
   const [month, setMonth] = useState("");
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -51,13 +67,13 @@ export default function MonthlyGrid() {
     // attendance map
     const map: Record<string, Attendance> = {};
     attRes.records.forEach((a: Attendance) => {
-      const d = new Date(a.date).getDate();
+      const d = calendarDayFromApiDate(a.date);
       map[`${a.employee}-${d}`] = a;
     });
     // off days map (month filtered)
     const hmap: Record<string, OffDay> = {};
     attRes.off_days.forEach((h: OffDay) => {
-      const d = new Date(h.date).getDate();
+      const d = calendarDayFromApiDate(h.date);
       hmap[`${d}`] = h;
     });
     setEmployees(attRes.employees);
@@ -75,20 +91,18 @@ export default function MonthlyGrid() {
       p = 0,
       h = 0,
       a = 0;
-    const joining = new Date(emp.joining_date);
     for (let d = 1; d <= daysInMonth; d++) {
-      const fullDateStr = `${month}-${d.toString().padStart(2, '0')}`;
-      const fullDate = new Date(fullDateStr);
-      if (fullDate < joining) continue;
+      if (joiningDayNotReached(month, d, emp.joining_date)) continue;
       const r = records[`${emp.id}-${d}`];
       const isHoliday = !!offDays[`${d}`];
       if (r) {
-        total += r.work_hours;
+        total += resolveWorkedHoursForDisplay(r);
         ot += r.overtime;
         ut += r.undertime;
-        if (r.status === "PRESENT") p++;
-        else if (r.status === "HALF") h++;
-        else if (r.status === "ABSENT" && !isHoliday) a++;
+        const eff = effectiveAttendanceStatusFromRecord(r);
+        if (eff === "PRESENT") p++;
+        else if (eff === "HALF") h++;
+        else if (eff === "ABSENT" && !isHoliday) a++;
       } else {
         if (!isHoliday) a++;
       }
@@ -135,22 +149,21 @@ export default function MonthlyGrid() {
     employees.forEach((e, idx) => {
       const s = summary(e);
       const days: string[] = [];
-      const joining = new Date(e.joining_date);
       for (let d = 1; d <= daysInMonth; d++) {
-        const fullDateStr = `${month}-${d.toString().padStart(2, '0')}`;
-        const fullDate = new Date(fullDateStr);
-        if (fullDate < joining) {
+        if (joiningDayNotReached(month, d, e.joining_date)) {
           days.push("PRE-JOIN");
           continue;
         }
         const r = records[`${e.id}-${d}`];
         const holiday = offDays[`${d}`];
+        const wh = r ? resolveWorkedHoursForDisplay(r) : 0;
         if (holiday && !r) {
           days.push(holiday.name.toUpperCase());
-        } else if (holiday && r && r.work_hours > 0) {
+        } else if (holiday && r && wh > 0) {
           days.push(`${holiday.name.toUpperCase()} OT (${r.overtime}h)`);
         } else if (r) {
-          days.push(`${r.status} (${r.work_hours}h)`);
+          const eff = effectiveAttendanceStatusFromRecord(r);
+          days.push(`${eff} (${wh}h)`);
         } else {
           days.push("ABSENT");
         }
@@ -266,7 +279,6 @@ export default function MonthlyGrid() {
           <tbody>
             {employees.map((e, i) => {
               const s = summary(e);
-              const joining = new Date(e.joining_date);
               return (
                 <tr key={e.id}>
                   <td className="p-2 border text-center">{i + 1}</td>
@@ -274,9 +286,7 @@ export default function MonthlyGrid() {
                   <td className="p-2 border">{e.designation}</td>
                   {[...Array(daysInMonth)].map((_, d) => {
                     const day = d + 1;
-                    const fullDateStr = `${month}-${day.toString().padStart(2, '0')}`;
-                    const fullDate = new Date(fullDateStr);
-                    if (fullDate < joining) {
+                    if (joiningDayNotReached(month, day, e.joining_date)) {
                       return (
                         <td
                           key={day}
@@ -290,17 +300,19 @@ export default function MonthlyGrid() {
                     }
                     const r = records[`${e.id}-${day}`];
                     const holiday = offDays[`${day}`];
-                    const worked = (r?.work_hours || 0) > 0;
+                    const wh = r ? resolveWorkedHoursForDisplay(r) : 0;
+                    const worked = wh > 0;
                     let label = "";
                     if (holiday && !r) label = holiday.name.toUpperCase();
                     else if (holiday && worked)
                       label = `${holiday.name.toUpperCase()} OT ${r?.overtime ?? 0}`;
-                    else if (r) label = r.status;
+                    else if (r)
+                      label = effectiveAttendanceStatusFromRecord(r);
                     return (
                       <td
                         key={day}
                         className={`p-1 border cursor-pointer hover:bg-gray-700 ${cellColor(
-                          r?.status,
+                          r ? effectiveAttendanceStatusFromRecord(r) : undefined,
                           !!holiday,
                           worked
                         )}`}
@@ -316,7 +328,7 @@ export default function MonthlyGrid() {
                           {label}
                         </div>
                         <div className="text-center text-[10px] opacity-70">
-                          {r ? `${r.work_hours}h` : ""}
+                          {r ? `${wh}h` : ""}
                         </div>
                       </td>
                     );
