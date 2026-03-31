@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { STANDARD_DAY_HOURS, statusFromWorkedHours } from "@/lib/attendance-status";
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -11,10 +12,8 @@ type Props = {
   onSave: (checkIn: string, checkOut: string, manual: boolean, status: string, work: number, ot: number, ut: number) => void;
   onDelete: () => void;
 };
-const STANDARD = 9;
-/** Under this many worked hours → half day; this or more → present (both punches valid). */
-const MIN_HOURS_PRESENT = 6;
-const NOMINAL_HALF_WORK = 6;
+const STANDARD = STANDARD_DAY_HOURS;
+const NOMINAL_HALF_WORK = 5;
 export default function AttendanceModal({
   open,
   onClose,
@@ -53,9 +52,7 @@ export default function AttendanceModal({
   const work = diffHours();
   const ot = Math.max(0, work - STANDARD);
   const ut = Math.max(0, STANDARD - work);
-  let autoStatus = "ABSENT";
-  if (work >= MIN_HOURS_PRESENT) autoStatus = "PRESENT";
-  else if (work > 0) autoStatus = "HALF";
+  const autoStatus = statusFromWorkedHours(work);
   const handleStatusChange = (newStatus: string) => {
     setStatus(newStatus);
     if (newStatus === "PRESENT") {

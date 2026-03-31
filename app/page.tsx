@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import api from "@/services/api";
+import { effectiveAttendanceStatus } from "@/lib/attendance-status";
 export default function DashboardHome() {
   const [stats, setStats] = useState({
     employees: 0,
@@ -23,7 +24,11 @@ export default function DashboardHome() {
     let present = 0;
     let hours = 0;
     records.forEach((r: any) => {
-      if (r.status === "PRESENT" || r.status === "HALF") present++;
+      const eff = effectiveAttendanceStatus(
+        r.work_hours ?? 0,
+        r.status ?? "ABSENT"
+      );
+      if (eff === "PRESENT" || eff === "HALF") present++;
       hours += r.work_hours;
     });
     setStats({

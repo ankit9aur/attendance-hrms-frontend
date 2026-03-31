@@ -5,13 +5,13 @@ import {
   bulkAttendance,
   biometricUploadAttendance,
 } from "@/services/attendance.service";
+import { STANDARD_DAY_HOURS, statusFromWorkedHours } from "@/lib/attendance-status";
 type Employee = {
   id: number;
   name: string;
   employee_code: string;
 };
-const STANDARD = 9;
-const MIN_HOURS_PRESENT = 6;
+const STANDARD = STANDARD_DAY_HOURS;
 export default function DailyEntryTable() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [date, setDate] = useState("");
@@ -40,9 +40,7 @@ export default function DailyEntryTable() {
     const work = diffHours(r.in, r.out);
     const ot = Math.max(0, work - STANDARD);
     const ut = Math.max(0, STANDARD - work);
-    let status = "ABSENT";
-    if (work >= MIN_HOURS_PRESENT) status = "PRESENT";
-    else if (work > 0) status = "HALF";
+    const status = statusFromWorkedHours(work);
     return { work, ot, ut, status };
   };
   // ---------------- CSV Upload → Backend ----------------
