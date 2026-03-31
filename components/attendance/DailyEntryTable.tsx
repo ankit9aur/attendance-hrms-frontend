@@ -11,7 +11,7 @@ type Employee = {
   employee_code: string;
 };
 const STANDARD = 9;
-const HALF = 6;
+const MIN_HOURS_PRESENT = 6;
 export default function DailyEntryTable() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [date, setDate] = useState("");
@@ -41,8 +41,8 @@ export default function DailyEntryTable() {
     const ot = Math.max(0, work - STANDARD);
     const ut = Math.max(0, STANDARD - work);
     let status = "ABSENT";
-    if (work >= STANDARD) status = "PRESENT";
-    else if (work >= HALF) status = "HALF";
+    if (work >= MIN_HOURS_PRESENT) status = "PRESENT";
+    else if (work > 0) status = "HALF";
     return { work, ot, ut, status };
   };
   // ---------------- CSV Upload → Backend ----------------

@@ -12,7 +12,9 @@ type Props = {
   onDelete: () => void;
 };
 const STANDARD = 9;
-const HALF = 6;
+/** Under this many worked hours → half day; this or more → present (both punches valid). */
+const MIN_HOURS_PRESENT = 6;
+const NOMINAL_HALF_WORK = 6;
 export default function AttendanceModal({
   open,
   onClose,
@@ -52,8 +54,8 @@ export default function AttendanceModal({
   const ot = Math.max(0, work - STANDARD);
   const ut = Math.max(0, STANDARD - work);
   let autoStatus = "ABSENT";
-  if (work >= STANDARD) autoStatus = "PRESENT";
-  else if (work >= HALF) autoStatus = "HALF";
+  if (work >= MIN_HOURS_PRESENT) autoStatus = "PRESENT";
+  else if (work > 0) autoStatus = "HALF";
   const handleStatusChange = (newStatus: string) => {
     setStatus(newStatus);
     if (newStatus === "PRESENT") {
@@ -61,9 +63,9 @@ export default function AttendanceModal({
       setOvertime(0);
       setUndertime(0);
     } else if (newStatus === "HALF") {
-      setWorkHours(HALF);
+      setWorkHours(NOMINAL_HALF_WORK);
       setOvertime(0);
-      setUndertime(STANDARD - HALF);
+      setUndertime(STANDARD - NOMINAL_HALF_WORK);
     } else if (newStatus === "ABSENT") {
       setWorkHours(0);
       setOvertime(0);
